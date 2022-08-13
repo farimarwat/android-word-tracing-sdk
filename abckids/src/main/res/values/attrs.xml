@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="TracingLetterView">
+        <attr name="tlv_segmentbordercolor" format="color"/>
+        <attr name="tlv_segmentbackgroundcolor" format="color"/>
+        <attr name="tlv_segmentfillcolor" format="color"/>
+        <attr name="tlv_segmentdot" format="color"/>
+        <attr name="tlv_segmentsize" format="float"/>
+    </declare-styleable>
+</resources>

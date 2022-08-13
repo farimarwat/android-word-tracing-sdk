@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="segmentborder">#FAFAFA</color>
+    <color name="segmentbackground">#AB47Bc</color>
+    <color name="segmentfill">#4CAF50</color>
+    <color name="segmentdot">#FAFAFA</color>
+</resources>
