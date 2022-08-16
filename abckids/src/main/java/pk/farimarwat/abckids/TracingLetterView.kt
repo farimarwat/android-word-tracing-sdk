@@ -3,12 +3,14 @@ package pk.farimarwat.abckids
 import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.*
-import android.os.Build
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import pk.farimarwat.abckids.models.KPointF
 import pk.farimarwat.abckids.models.KSegment
 import pk.farimarwat.abckids.models.LetterA
@@ -17,31 +19,28 @@ import pk.farimarwat.abckids.models.LetterU
 
 const val TAG = "abckids"
 class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs) {
+    private var mListener:AbcdkidsListener? = null
     private var mTa:TypedArray
     private var mCanvasSize = 400
     private var mSizeSegment = 60f
-    private val mPaint:Paint
-    private val mPaintSegBorder = Paint().apply {
+    private val mPaint = Paint().apply {
         isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
     }
+    private val mPaintSpecific = Paint().apply {
+        isAntiAlias = true
+    }
+
+    private var mSegBorderStrokeSize = 0f
+    private var mSegBorderColor = 0
     private var mPathSegBorder = Path()
 
-    private val mPaintSegBackground = Paint().apply {
-        isAntiAlias = true
-
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-
-    }
+    private var mSegBackgroundStrokeSize = 0f
+    private var mSegBackgroundColor = 0
     private var mPathSegBackground = Path()
 
-    private val mPaintSegFill = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-    }
+    private var mSegFillStrokeSize = 0f
+    private var mSegFillColor = 0
+    private var mFillBitmapShader:BitmapShader? = null
     private var mPathSegFill= Path()
     private val mPaintSegDot = Paint().apply {
         isAntiAlias = true
@@ -50,15 +49,14 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
     private val mSegDotRadius = 10f
     private val mSegDotDetectRadius = 50f
     private val mListSegments = mutableListOf<KSegment>()
+    private var mTracingCompleted = false
     private var mActiveSegment:KSegment? = null
     private var mActiveSegmentIndex:Int = 0
     private var mCanMove = false
     private var mPorterDuff_SRC_ATOP = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+    private var mPorterDuff_DST_ATOP = PorterDuffXfermode(PorterDuff.Mode.DST_ATOP)
     init {
-        setLayerType(LAYER_TYPE_SOFTWARE, null)
-        mPaint = Paint().apply {
-            style = Paint.Style.FILL_AND_STROKE
-        }
+        setLayerType(LAYER_TYPE_SOFTWARE,null)
         mTa = context.theme.obtainStyledAttributes(
             attrs,
             R.styleable.TracingLetterView,0,0
@@ -72,36 +70,43 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
     }
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        canvas?.drawColor(Color.GRAY)
         mPaint.xfermode = null
-        setLetter(LetterU.getSegments(width,height),canvas)
-        canvas?.drawBitmap(createSegBorder(width,height),0f,0f,mPaint)
+        setLetter(LetterA.getSegments(width,height))
         canvas?.drawBitmap(createSegBackground(width,height),0f,0f,mPaint)
         mPaint.xfermode = mPorterDuff_SRC_ATOP
         canvas?.drawBitmap(createSegFill(width,height),0f,0f,mPaint)
+        mPaint.xfermode = mPorterDuff_DST_ATOP
+        canvas?.drawBitmap(createSegBorder(width,height),0f,0f,mPaint)
+        drawUnaccessedSegment(canvas,mListSegments)
     }
     private fun initSegment(context:Context,ta:TypedArray){
         val colorSegBorder = ta.getColor(R.styleable.TracingLetterView_tlv_segmentbordercolor,0)
         if(colorSegBorder != 0){
-            mPaintSegBorder.color = colorSegBorder
+            mSegBorderColor = colorSegBorder
         } else {
-            mPaintSegBorder.color = ContextCompat.getColor(context,R.color.segmentborder)
+            mSegBorderColor= ContextCompat.getColor(context,R.color.segmentborder)
         }
 
         val colorSegBackground = ta.getColor(R.styleable.TracingLetterView_tlv_segmentbackgroundcolor,0)
         if(colorSegBackground != 0){
-            mPaintSegBackground.color = colorSegBackground
+           mSegBackgroundColor = colorSegBackground
         } else {
-            mPaintSegBackground.color = ContextCompat.getColor(context,R.color.segmentbackground)
+            mSegBackgroundColor = ContextCompat.getColor(context,R.color.segmentbackground)
         }
 
         val colorSegFill = ta.getColor(R.styleable.TracingLetterView_tlv_segmentfillcolor,0)
         if(colorSegFill != 0){
-            mPaintSegFill.color = colorSegFill
+            mSegFillColor = colorSegFill
         } else {
-            mPaintSegFill.color = ContextCompat.getColor(context,R.color.segmentfill)
+            mSegFillColor = ContextCompat.getColor(context,R.color.segmentfill)
         }
 
+        val fillimagedrawable = ta.getDrawable(R.styleable.TracingLetterView_tlv_segmentfillimage)
+        fillimagedrawable?.let {
+            var bitmap = it.toBitmap()
+            bitmap = Bitmap.createScaledBitmap(bitmap,60,60,false)
+            mFillBitmapShader = BitmapShader(bitmap,Shader.TileMode.REPEAT,Shader.TileMode.REPEAT)
+        }
         val colorSegDot = ta.getColor(R.styleable.TracingLetterView_tlv_segmentdot,0)
         if(colorSegDot != 0){
             mPaintSegDot.color = colorSegDot
@@ -110,9 +115,9 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
         }
 
         mSizeSegment = ta.getFloat(R.styleable.TracingLetterView_tlv_segmentsize, SEG_SIZE_DEFAULT)
-        mPaintSegBorder.strokeWidth = mSizeSegment
-        mPaintSegBackground.strokeWidth = mSizeSegment - 20f
-        mPaintSegFill.strokeWidth = mSizeSegment - 20f
+        mSegBorderStrokeSize = mSizeSegment
+        mSegBackgroundStrokeSize= mSizeSegment - 20f
+        mSegFillStrokeSize = mSizeSegment - 20f
 
         ta.recycle()
     }
@@ -120,54 +125,71 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
     fun createSegBorder(width:Int,height:Int):Bitmap {
         val bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawPath(mPathSegBorder, mPaintSegBorder)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            color = mSegBorderColor
+            strokeWidth = mSegBorderStrokeSize
+        }
+        canvas.drawPath(mPathSegBorder, paint)
         return bitmap
     }
 
     fun createSegBackground(width:Int,height: Int):Bitmap {
         val bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawPath(mPathSegBackground, mPaintSegBackground)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            color = mSegBackgroundColor
+            strokeWidth = mSegBackgroundStrokeSize
+        }
+        canvas.drawPath(mPathSegBackground, paint)
         return bitmap
     }
 
     fun createSegFill(width: Int,height: Int):Bitmap {
         val bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        canvas.drawPath(mPathSegFill, mPaintSegFill)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = mSegFillStrokeSize
+        }
+        if(mFillBitmapShader != null){
+            paint.shader = mFillBitmapShader
+        } else {
+            paint.color = mSegFillColor
+        }
+        canvas.drawPath(mPathSegFill, paint)
         return bitmap
     }
-    fun drawLetter(canvas: Canvas?){
-        val rectbitmap = RectF(0f,0f,width.toFloat(),height.toFloat())
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val bitmap = BitmapFactory.decodeResource(resources,R.drawable.letter)
-        canvas?.drawBitmap(bitmap,null,rectbitmap,paint)
-
-
-    }
-    fun setLetter(path:Path,canvas: Canvas?){
-        canvas?.drawPath(path,mPaintSegBorder)
-        canvas?.drawPath(path,mPaintSegBackground)
-        val paths = pathsFromComplexPath(path)
-        paths?.let { list_paths ->
-            for(p in list_paths){
-                val points = getPoints(p)
-                val kpoints = mutableListOf<KPointF>()
-                for(point in points){
-                    kpoints.add(
-                        KPointF(false,point)
+    fun setLetter(path:Path){
+        mPathSegBackground = path
+        mPathSegBorder = path
+        if(mListSegments.isEmpty()){
+            val paths = pathsFromComplexPath(path)
+            paths?.let { list_paths ->
+                for(p in list_paths){
+                    val points = getPoints(p)
+                    val kpoints = mutableListOf<KPointF>()
+                    for(point in points){
+                        kpoints.add(
+                            KPointF(false,point)
+                        )
+                    }
+                    mListSegments.add(
+                        KSegment(false,kpoints)
                     )
                 }
-                mListSegments.add(
-                    KSegment(false,kpoints)
-                )
             }
         }
-        drawUnaccessedSegment(canvas,mListSegments)
     }
     fun drawUnaccessedSegment(canvas:Canvas?,segments:MutableList<KSegment>){
-        if(segments.isNotEmpty()){
+        if(segments.isNotEmpty() && !mTracingCompleted){
             var counter = 0
             for(seg in segments){
                if(!seg.isaccessed!!) {
@@ -186,7 +208,6 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
     }
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         event?.let { event
-
             when(event.action){
                 MotionEvent.ACTION_DOWN ->{
                     mActiveSegment?.points?.let { list ->
@@ -197,11 +218,27 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
                                 mSegDotDetectRadius
                             )
                             if(istouched){
+                                Log.e(TAG,"Size: ${mListSegments.size}")
+                                //setting progress
+                                mActiveSegment?.let { seg ->
+                                    val total = seg.getTotal()
+                                    val current = seg.getIndex(point).plus(1)
+                                    mListener?.onDotTouched(
+                                        (current*total)/100f
+                                    )
+                                }
+
                                 if(mActiveSegment?.getPrevious(point)?.isaccessed == true
                                     || mActiveSegment?.getPrevious(point) == null
                                 ){
                                     mCanMove = true
-                                    mPathSegFill.moveTo(point.point.x,point.point.y)
+//                                    mPathSegFill.moveTo(point.point.x,point.point.y)
+                                    mActiveSegment?.let {
+                                        val first = it.getFirst()
+                                        first?.let { kpoint ->
+                                            mPathSegFill.moveTo(kpoint.point.x,kpoint.point.y)
+                                        }
+                                    }
                                     val next = mActiveSegment?.getNext(point)
                                     next?.let {
                                         mActiveSegment?.setAccess(it)
@@ -212,7 +249,6 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
                                 }
                                 break
                             }
-
                         }
                     }
                 }
@@ -223,12 +259,26 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
                                 event.x,event.y,point.point.x,point.point.y,mSegDotDetectRadius
                             )
                             if(istouched && mCanMove){
-                                Log.e(TAG,"Index: ${mActiveSegment?.getIndex(point)}")
+                                //setting progress
+                                mActiveSegment?.let { seg ->
+                                    val total = seg.getTotal().toFloat()
+                                    val current = seg.getIndex(point).plus(1).toFloat()
+
+                                    mListener?.onDotTouched(
+                                        ((current/total)*100f)
+                                    )
+                                }
+
                                 mPathSegFill.lineTo(point.point.x,point.point.y)
                                 mActiveSegment?.setAccess(point)
-
                                 if(mActiveSegment?.isSegmentAccessed() == true){
                                     mListSegments[mActiveSegmentIndex].isaccessed = true
+                                    mListener?.onSegmentFinished()
+                                    mCanMove = false
+                                    if(mActiveSegmentIndex == mListSegments.size -1){
+                                        mTracingCompleted = true
+                                        mListener?.onTraceFinished()
+                                    }
                                 }
                                 invalidate()
                                 break
@@ -246,6 +296,18 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
         return true
     }
 
+    //attributes
+    fun setSegmentFillImage(image:Drawable?){
+       image?.let {
+           var bitmap = it.toBitmap()
+           bitmap = Bitmap.createScaledBitmap(bitmap,60,60,false)
+           mFillBitmapShader = BitmapShader(bitmap,Shader.TileMode.REPEAT,Shader.TileMode.REPEAT)
+       }
+    }
+    //
+    fun addListener(listener: AbcdkidsListener){
+        mListener = listener
+    }
     private fun isCircleTouched(
         touchX: Float,
         touchY: Float,
@@ -289,6 +351,6 @@ class TracingLetterView (context:Context,attrs:AttributeSet):View(context,attrs)
         return list
     }
     companion object {
-        val SEG_SIZE_DEFAULT = 100f
+        val SEG_SIZE_DEFAULT = 120f
     }
 }

@@ -60,6 +60,27 @@ data class KSegment(
         return index
     }
 
+    fun getFirst():KPointF?{
+        var pointf:KPointF? = null
+        points?.let {
+            pointf = it.first()
+        }
+        return pointf
+    }
+    fun getLast():KPointF?{
+        var pointf:KPointF? = null
+        points?.let {
+            pointf = it.last()
+        }
+        return pointf
+    }
+    fun getTotal():Int{
+        points?.let {
+            return it.size
+        }
+        return 0
+    }
+
     fun isSegmentAccessed(): Boolean {
         points?.let {
             for (p in it) {
