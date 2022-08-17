@@ -16,6 +16,7 @@ import pk.farimarwat.abckids.models.KPointF
 import pk.farimarwat.abckids.models.KSegment
 import pk.farimarwat.abckids.models.LetterA
 import pk.farimarwat.abckids.models.LetterU
+import kotlin.math.log
 
 
 const val TAG = "abckids"
@@ -60,7 +61,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     private var mIndicatorBitmap: Bitmap? = null
     private var mShowIndicator = true
     private var mIndicatorPoint:PointF? = null
-    private var mShouldDrawUnaccessed = false
+    private var mIndicatorValueAnimator:ValueAnimator? = null
 
     init {
         setLayerType(LAYER_TYPE_SOFTWARE, null)
@@ -81,16 +82,21 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         mPaint.xfermode = null
-        setLetter(LetterU.getSegments(width, height))
+        setLetter(LetterA.getSegments(width, height))
         canvas?.drawBitmap(createSegBackground(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_SRC_ATOP
         canvas?.drawBitmap(createSegFill(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_DST_ATOP
         canvas?.drawBitmap(createSegBorder(width, height), 0f, 0f, mPaint)
+
+        if(mShowIndicator){
+            mIndicatorBitmap?.let { ibitmap ->
+                mIndicatorPoint?.let { ipoint ->
+                    canvas?.drawBitmap(ibitmap,ipoint.x,ipoint.y,null)
+                }
+            }
+        }
         drawUnaccessedSegment(canvas, mListSegments)
-
-
-
     }
 
     private fun initSegment(context: Context, ta: TypedArray) {
@@ -191,9 +197,10 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     fun setLetter(path: Path) {
-        mPathSegBackground = path
-        mPathSegBorder = path
         if (mListSegments.isEmpty()) {
+            mPathSegBackground = path
+            mPathSegBorder = path
+            Log.e(TAG,"Setting Letter")
             val paths = pathsFromComplexPath(path)
             paths?.let { list_paths ->
                 for (p in list_paths) {
@@ -217,22 +224,27 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
 
     fun drawUnaccessedSegment(canvas: Canvas?, segments: MutableList<KSegment>) {
         if (segments.isNotEmpty()
-            && !mTracingCompleted
+            && (!mTracingCompleted)
         ) {
-            var counter = 0
-            for (seg in segments) {
-                if (!seg.isaccessed!!) {
-                    mActiveSegment = seg
-                    mActiveSegmentIndex = counter
-                    break
+            if(mActiveSegment == null){
+                var counter = 0
+                for (seg in segments) {
+                    if (!seg.isaccessed!!) {
+                        mActiveSegment = seg
+                        mActiveSegmentIndex = counter
+                        mShowIndicator = true
+                        showIndicator()
+                        break
+                    }
+                    counter++
                 }
-                counter++
             }
             mActiveSegment?.points?.let {
                 for (d in it) {
                     canvas?.drawCircle(d.point.x, d.point.y, mSegDotRadius, mPaintSegDot)
                 }
             }
+
         }
     }
 
@@ -241,6 +253,8 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
             event
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    mShowIndicator = false
+                    mIndicatorValueAnimator?.cancel()
                     mActiveSegment?.points?.let { list ->
                         for (point in list) {
                             val istouched = isCircleTouched(
@@ -301,6 +315,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
                                         mListSegments[mActiveSegmentIndex].isaccessed = true
                                         mListener?.onSegmentFinished()
                                         mCanMove = false
+                                        mActiveSegment = null
 
                                         mPathSegFill.lineTo(point.point.x, point.point.y)
                                         if (mActiveSegmentIndex == mListSegments.size - 1) {
@@ -401,27 +416,25 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     fun showIndicator() {
-        var valueanimator:ValueAnimator? = null
        if(mShowIndicator){
            mActiveSegment?.let { kSegment ->
                kSegment.points?.let { points ->
-                   valueanimator = ValueAnimator.ofInt(0, points.size -1)
-                   valueanimator?.apply {
+                   mIndicatorValueAnimator = ValueAnimator.ofInt(0, points.size -1)
+                   mIndicatorValueAnimator?.apply {
                        duration = 2000
                        repeatCount = 3
                    }
-                   valueanimator?.addUpdateListener {
-
-                      mIndicatorPoint = points[valueanimator?.animatedValue as Int]
+                   mIndicatorValueAnimator?.addUpdateListener {
+                      mIndicatorPoint = points[mIndicatorValueAnimator?.animatedValue as Int]
                           .point
-                       Log.e(TAG,"${mShowIndicator}")
+
                        invalidate()
                    }
-                   valueanimator?.start()
+                   mIndicatorValueAnimator?.start()
                }
            }
        } else {
-           valueanimator?.cancel()
+           mIndicatorValueAnimator?.cancel()
        }
     }
 
