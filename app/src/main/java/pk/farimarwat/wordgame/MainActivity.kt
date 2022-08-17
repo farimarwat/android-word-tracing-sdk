@@ -32,7 +32,6 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
-        val drawable = ContextCompat.getDrawable(mContext,R.drawable.fill)
-        binding.tlview.setSegmentFillImage(drawable)
+
     }
 }

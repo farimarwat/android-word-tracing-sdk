@@ -11,7 +11,7 @@
 
    <pk.farimarwat.abckids.TracingLetterView
        android:id="@+id/tlview"
-       android:layout_width="400dp"
+       android:layout_width="350dp"
        android:layout_height="match_parent"
        android:layout_gravity="center"
        />

@@ -7,6 +7,6 @@
         <attr name="tlv_segmentfillimage" format="reference"/>
         <attr name="tlv_segmentdot" format="color"/>
         <attr name="tlv_segmentsize" format="float"/>
-
+        <attr name="tlv_indicator" format="reference"/>
     </declare-styleable>
 </resources>

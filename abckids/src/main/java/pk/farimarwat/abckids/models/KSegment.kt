@@ -1,10 +1,13 @@
 package pk.farimarwat.abckids.models
 
 import android.graphics.Path
+import android.graphics.PointF
 
 data class KSegment(
     var isaccessed: Boolean?,
-    var points: MutableList<KPointF>?
+    var points: MutableList<KPointF>?,
+    var startpoint:PointF?,
+    var endpoint:PointF?
 ) {
 
     fun getPrevious(point: KPointF): KPointF? {
