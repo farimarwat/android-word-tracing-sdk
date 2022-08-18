@@ -81,13 +81,12 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         mPaint.xfermode = null
-        setLetter(LetterR.getSegments(width, height))
+        setLetter(LetterA.getSegments(width, height))
         canvas?.drawBitmap(createSegBackground(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_SRC_ATOP
         canvas?.drawBitmap(createSegFill(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_DST_ATOP
         canvas?.drawBitmap(createSegBorder(width, height), 0f, 0f, mPaint)
-
 
         drawUnaccessedSegment(canvas, mListSegments)
         if(mShowIndicator){
@@ -138,7 +137,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         mSizeSegment = ta.getFloat(R.styleable.TracingLetterView_tlv_segmentsize, SEG_SIZE_DEFAULT)
         mSegBorderStrokeSize = mSizeSegment
         mSegBackgroundStrokeSize = mSizeSegment - 20f
-        mSegFillStrokeSize = mSizeSegment + 20f
+        mSegFillStrokeSize = mSizeSegment
 
         val indicator = ta.getDrawable(R.styleable.TracingLetterView_tlv_indicator)
         if(indicator != null){
@@ -311,13 +310,14 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
                                     mListener?.onDotTouched(
                                         progress
                                     )
+                                    mPathSegFill.lineTo(point.point.x, point.point.y)
                                     if (progress >= 100.0f) {
                                         mListSegments[mActiveSegmentIndex].isaccessed = true
                                         mListener?.onSegmentFinished()
                                         mCanMove = false
                                         mActiveSegment = null
-
-                                        mPathSegFill.lineTo(point.point.x, point.point.y)
+                                        val endpoint = seg.endpoint!!
+                                        mPathSegFill.moveTo(endpoint.x,endpoint.y)
                                         if (mActiveSegmentIndex == mListSegments.size - 1) {
                                             mTracingCompleted = true
                                             mListener?.onTraceFinished()
