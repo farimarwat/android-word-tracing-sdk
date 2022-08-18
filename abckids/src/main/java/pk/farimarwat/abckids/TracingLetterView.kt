@@ -12,10 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
-import pk.farimarwat.abckids.models.KPointF
-import pk.farimarwat.abckids.models.KSegment
-import pk.farimarwat.abckids.models.LetterA
-import pk.farimarwat.abckids.models.LetterU
+import pk.farimarwat.abckids.models.*
 import kotlin.math.log
 
 
@@ -36,6 +33,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     private var mSegBorderStrokeSize = 0f
     private var mSegBorderColor = 0
     private var mPathSegBorder = Path()
+    lateinit var mPaintSegBackground:Paint
 
     private var mSegBackgroundStrokeSize = 0f
     private var mSegBackgroundColor = 0
@@ -45,6 +43,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     private var mSegFillColor = 0
     private var mFillBitmapShader: BitmapShader? = null
     private var mPathSegFill = Path()
+    lateinit var mPaintSegFill:Paint
     private val mPaintSegDot = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
@@ -82,13 +81,15 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         mPaint.xfermode = null
-        setLetter(LetterA.getSegments(width, height))
+        setLetter(LetterR.getSegments(width, height))
         canvas?.drawBitmap(createSegBackground(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_SRC_ATOP
         canvas?.drawBitmap(createSegFill(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_DST_ATOP
         canvas?.drawBitmap(createSegBorder(width, height), 0f, 0f, mPaint)
 
+
+        drawUnaccessedSegment(canvas, mListSegments)
         if(mShowIndicator){
             mIndicatorBitmap?.let { ibitmap ->
                 mIndicatorPoint?.let { ipoint ->
@@ -96,7 +97,6 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
                 }
             }
         }
-        drawUnaccessedSegment(canvas, mListSegments)
     }
 
     private fun initSegment(context: Context, ta: TypedArray) {
@@ -138,7 +138,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         mSizeSegment = ta.getFloat(R.styleable.TracingLetterView_tlv_segmentsize, SEG_SIZE_DEFAULT)
         mSegBorderStrokeSize = mSizeSegment
         mSegBackgroundStrokeSize = mSizeSegment - 20f
-        mSegFillStrokeSize = mSizeSegment
+        mSegFillStrokeSize = mSizeSegment + 20f
 
         val indicator = ta.getDrawable(R.styleable.TracingLetterView_tlv_indicator)
         if(indicator != null){
@@ -167,32 +167,32 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     fun createSegBackground(width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint().apply {
+        mPaintSegBackground = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             color = mSegBackgroundColor
             strokeWidth = mSegBackgroundStrokeSize
         }
-        canvas.drawPath(mPathSegBackground, paint)
+        canvas.drawPath(mPathSegBackground, mPaintSegBackground)
         return bitmap
     }
 
     fun createSegFill(width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint().apply {
+        mPaintSegFill = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeWidth = mSegFillStrokeSize
         }
         if (mFillBitmapShader != null) {
-            paint.shader = mFillBitmapShader
+            mPaintSegFill.shader = mFillBitmapShader
         } else {
-            paint.color = mSegFillColor
+            mPaintSegFill.color = mSegFillColor
         }
-        canvas.drawPath(mPathSegFill, paint)
+        canvas.drawPath(mPathSegFill, mPaintSegFill)
         return bitmap
     }
 
@@ -215,7 +215,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
                         )
                     }
                     mListSegments.add(
-                        KSegment(false, kpoints, startpoint, endPoint)
+                        KSegment(false, kpoints,p, startpoint, endPoint)
                     )
                 }
             }
@@ -238,13 +238,13 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
                     }
                     counter++
                 }
+
             }
             mActiveSegment?.points?.let {
                 for (d in it) {
                     canvas?.drawCircle(d.point.x, d.point.y, mSegDotRadius, mPaintSegDot)
                 }
             }
-
         }
     }
 

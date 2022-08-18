@@ -6,6 +6,7 @@ import android.graphics.PointF
 data class KSegment(
     var isaccessed: Boolean?,
     var points: MutableList<KPointF>?,
+    var path:Path?,
     var startpoint:PointF?,
     var endpoint:PointF?
 ) {
