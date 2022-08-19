@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.Log
@@ -13,7 +12,6 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import pk.farimarwat.abckids.models.*
-import kotlin.math.log
 
 
 const val TAG = "abckids"
@@ -62,6 +60,8 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     private var mIndicatorPoint:PointF? = null
     private var mIndicatorValueAnimator:ValueAnimator? = null
 
+    private var mLetter:Path? = null
+
     init {
         setLayerType(LAYER_TYPE_SOFTWARE, null)
         mTa = context.theme.obtainStyledAttributes(
@@ -81,7 +81,9 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         mPaint.xfermode = null
-        setLetter(LetterA.getSegments(width, height))
+        mLetter?.let {
+            prepareLetter(it)
+        }
         canvas?.drawBitmap(createSegBackground(width, height), 0f, 0f, mPaint)
         mPaint.xfermode = mPorterDuff_SRC_ATOP
         canvas?.drawBitmap(createSegFill(width, height), 0f, 0f, mPaint)
@@ -149,7 +151,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         ta.recycle()
     }
 
-    fun createSegBorder(width: Int, height: Int): Bitmap {
+    private fun createSegBorder(width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint().apply {
@@ -163,7 +165,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return bitmap
     }
 
-    fun createSegBackground(width: Int, height: Int): Bitmap {
+    private fun createSegBackground(width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         mPaintSegBackground = Paint().apply {
@@ -177,7 +179,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return bitmap
     }
 
-    fun createSegFill(width: Int, height: Int): Bitmap {
+    private fun createSegFill(width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         mPaintSegFill = Paint().apply {
@@ -195,7 +197,32 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return bitmap
     }
 
-    fun setLetter(path: Path) {
+    fun setLetter(letter:String, width: Int, height: Int){
+        when(letter) {
+            "A"-> {
+                mLetter = LetterA.getSegments(width,height)
+            }
+            "B"-> {
+                mLetter = LetterB.getSegments(width,height)
+            }
+            "C"-> {
+                mLetter = LetterC.getSegments(width,height)
+            }
+            "D"-> {
+                mLetter = LetterD.getSegments(width,height)
+            }
+            "E"-> {
+                mLetter = LetterE.getSegments(width,height)
+            }
+            "F"-> {
+                mLetter = LetterF.getSegments(width,height)
+            }
+        }
+    }
+    fun setLetter(path:Path, width: Int, height: Int){
+       mLetter = path
+    }
+    private fun prepareLetter(path: Path) {
         if (mListSegments.isEmpty()) {
             mPathSegBackground = path
             mPathSegBorder = path
@@ -221,7 +248,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         }
     }
 
-    fun drawUnaccessedSegment(canvas: Canvas?, segments: MutableList<KSegment>) {
+    private fun drawUnaccessedSegment(canvas: Canvas?, segments: MutableList<KSegment>) {
         if (segments.isNotEmpty()
             && (!mTracingCompleted)
         ) {
@@ -241,7 +268,9 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
             }
             mActiveSegment?.points?.let {
                 for (d in it) {
-                    canvas?.drawCircle(d.point.x, d.point.y, mSegDotRadius, mPaintSegDot)
+                    if(!d.isaccessed){
+                        canvas?.drawCircle(d.point.x, d.point.y, mSegDotRadius, mPaintSegDot)
+                    }
                 }
             }
         }
@@ -371,7 +400,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return touchX > centerX && Math.sqrt((x * x + y * y).toDouble()) < r
     }
 
-    fun pathsFromComplexPath(p: Path?): List<Path>? {
+   private fun pathsFromComplexPath(p: Path?): List<Path>? {
         val pathList: MutableList<Path> = ArrayList()
         val pm = PathMeasure(p, false)
         var fin = false
@@ -405,7 +434,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return list
     }
 
-    fun getPoint(pm: PathMeasure, length: Float): PointF {
+    private fun getPoint(pm: PathMeasure, length: Float): PointF {
         val pointf = PointF(0f, 0f)
         val coordinates = floatArrayOf(0f, 0f)
 
@@ -415,14 +444,14 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         return pointf
     }
 
-    fun showIndicator() {
+    private fun showIndicator() {
        if(mShowIndicator){
            mActiveSegment?.let { kSegment ->
                kSegment.points?.let { points ->
                    mIndicatorValueAnimator = ValueAnimator.ofInt(0, points.size -1)
                    mIndicatorValueAnimator?.apply {
                        duration = 2000
-                       repeatCount = 3
+                       repeatCount = ValueAnimator.INFINITE
                    }
                    mIndicatorValueAnimator?.addUpdateListener {
                       mIndicatorPoint = points[mIndicatorValueAnimator?.animatedValue as Int]
@@ -439,6 +468,6 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     companion object {
-        val SEG_SIZE_DEFAULT = 120f
+        val SEG_SIZE_DEFAULT = 80f
     }
 }

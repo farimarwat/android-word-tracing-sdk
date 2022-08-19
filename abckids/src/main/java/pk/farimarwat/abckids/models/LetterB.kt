@@ -16,12 +16,12 @@ class LetterB {
             path.lineTo(marginstart,marginBottom)
 
             path.moveTo(marginstart,marginTop)
-            var oval = RectF(marginstart+100f,marginTop,marginEnd,marginBottom/2f+40f)
+            var oval = RectF(marginstart+100f,marginTop,marginEnd,marginBottom/2f+20f)
             path.arcTo(oval,280f,175f)
-            path.lineTo(marginstart,marginBottom/2f+40f)
+            path.lineTo(marginstart,marginBottom/2f+20f)
 
-            path.moveTo(marginstart,marginBottom/2f+40f)
-            oval = RectF(marginstart+100f,marginBottom/2f+40f,marginEnd,marginBottom)
+            path.moveTo(marginstart,marginBottom/2f+20f)
+            oval = RectF(marginstart+100f,marginBottom/2f+20f,marginEnd,marginBottom)
             path.arcTo(oval,280f,175f)
             path.lineTo(marginstart,marginBottom)
 
