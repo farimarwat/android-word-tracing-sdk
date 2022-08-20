@@ -86,3 +86,6 @@ It is as simple as ABC. Just create a path and use as below. For instance I want
 		
         binding.tlview.setLetter(path)
 ```
+### Rules for custom shapes/letters
+I have built all the letters using width and height 420,420. If you change  the size then you may face unexpacted result in your shapes/letters.
+Another point to note that if you move finger and the fill does not hide the end then your path is wrong. So every thing is the PATH creation and do not blam the library.
