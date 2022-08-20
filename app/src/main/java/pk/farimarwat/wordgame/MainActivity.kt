@@ -31,6 +31,8 @@ class MainActivity : AppCompatActivity() {
         path.moveTo(width*0.32f,height*0.62f)
         path.lineTo(width*0.62f,height*0.62f)
         binding.tlview.setLetter(path,width,height)
+
+//        binding.tlview.setLetter("A",width,height)
         binding.tlview.addListener(object :AbcdkidsListener{
             override fun onDotTouched(progress: Float) {
                 Log.e(TAG,"Progress: ${progress}")
