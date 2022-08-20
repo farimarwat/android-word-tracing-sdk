@@ -219,7 +219,7 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
             }
         }
     }
-    fun setLetter(path:Path, width: Int, height: Int){
+    fun setLetter(path:Path){
        mLetter = path
     }
     private fun prepareLetter(path: Path) {

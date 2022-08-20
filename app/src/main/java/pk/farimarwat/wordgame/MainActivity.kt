@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 
         path.moveTo(width*0.32f,height*0.62f)
         path.lineTo(width*0.62f,height*0.62f)
-        binding.tlview.setLetter(path,width,height)
+        binding.tlview.setLetter(path)
 
 //        binding.tlview.setLetter("A",width,height)
         binding.tlview.addListener(object :AbcdkidsListener{
