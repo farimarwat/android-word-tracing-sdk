@@ -395,9 +395,9 @@ class TracingLetterView(context: Context, attrs: AttributeSet) : View(context, a
         centerY: Float,
         r: Float
     ): Boolean {
-        val x = touchX - centerX
-        val y = touchY - centerY
-        return touchX > centerX && Math.sqrt((x * x + y * y).toDouble()) < r
+        val distanceX = touchX - centerX
+        val distanceY = touchY - centerY
+        return (distanceX * distanceX) + (distanceY * distanceY) <= r * r;
     }
 
    private fun pathsFromComplexPath(p: Path?): List<Path>? {

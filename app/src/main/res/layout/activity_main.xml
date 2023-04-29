@@ -16,6 +16,13 @@
        app:layout_constraintStart_toStartOf="parent"
        app:layout_constraintEnd_toEndOf="parent"
        app:layout_constraintTop_toTopOf="parent"
+       app:tlv_segmentfillimage="@drawable/fill"
+       app:tlv_indicator="@drawable/hand_indicator"
+       app:tlv_segmentbordercolor="@color/teal_200"
+       app:tlv_segmentbackgroundcolor="@color/black"
+       app:tlv_segmentdot="@color/purple_700"
+       app:tlv_segmentfillcolor="@color/purple_200"
+       app:tlv_segmentsize="80"
        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
